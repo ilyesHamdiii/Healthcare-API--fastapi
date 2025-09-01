@@ -6,7 +6,7 @@ import os
 load_dotenv()
 SQL_ALCHEMY_DATABASE_URL=os.getenv("DATABASE_URL")
 engine=create_engine(SQL_ALCHEMY_DATABASE_URL)
-Sessionlocal=sessionmaker(auto_commit=False,auto_flush=False,bind=engine)
+Sessionlocal=sessionmaker(autocommit=False,autoflush=False,bind=engine)
 Base=declarative_base()
 def get_db():
     

@@ -15,12 +15,12 @@ router=APIRouter(
 )
 models.Base.metadata.create_all(bind=engine)
 
-@router.post("register",status_code=status.HTTP_201_CREATED,response_model=schemas.UserRead)
+@router.post("/",status_code=status.HTTP_201_CREATED,response_model=schemas.UserRead)
 def CreateUser(user:schemas.CreateUser,db:Session=Depends(get_db)):
     hashed_passowrd=utility.hash(user.password)
     user.password=hashed_passowrd
-    new_user=models.user(*user.dict())
+    new_user=models.User(**user.dict())
     db.add(new_user)
     db.commit()
-    db.refresh()
+    db.refresh(new_user)
     return new_user

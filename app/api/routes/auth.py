@@ -11,13 +11,19 @@ router=APIRouter(
     tags=["authorisation"]
 )
 
-@router.get("login",status_code=status.HTTP_202_ACCEPTED,response_model=schemas.UserRead)
-def login(user_credentials:OAuth2PasswordRequestForm=Depends(),db:Session=Depends()):
+@router.post("/login",status_code=status.HTTP_202_ACCEPTED,response_model=schemas.UserRead)
+def login(user_credentials:OAuth2PasswordRequestForm=Depends(),db:Session=Depends(get_db)):
     user=db.query(models.User).filter(models.User.email==user_credentials.username).first()
     if not user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,details="invalid credentials")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail="invalid credentials")
     else:
         if not utility.verify(user_credentials.password,user.password):
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail="invalid credentials")
     token=oauth.create_access_token({"user_id ":user.id})
     return {"access_token":token,"token_type":"bearer"}
+@router.get("/me",response_model=schemas.UserRead)
+def GetUser(db:Session=Depends(get_db)):
+    user=db.query(models.User).filter(models.User.id==user.id).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail="User id does not exit")
+    return user

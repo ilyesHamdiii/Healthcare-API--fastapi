@@ -10,7 +10,11 @@ class UserRead(BaseModel):
 class UserLogin(CreateUser):
     pass
 class TokenData(BaseModel):
-    id:Optional[str]=None
+    id:Optional[int]=None
 class Token(BaseModel):
     access_token:str
     token_type:str
+
+class LoginRequest(BaseModel):
+    email:EmailStr
+    password:str

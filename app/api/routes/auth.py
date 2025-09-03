@@ -7,6 +7,8 @@ from app.models import models
 from app.core import utility,oauth
 from fastapi.security.oauth2 import OAuth2PasswordRequestForm
 from app.core.oauth import get_current_user
+from jose import JWTError,jwt
+from app.core.oauth import oauth2_scheme
 app=FastAPI()
 router=APIRouter(
     tags=["authorisation"]
@@ -29,12 +31,12 @@ def login_alternative(login_data: OAuth2PasswordRequestForm=Depends(), db: Sessi
             headers={"WWW-Authenticate": "Bearer"}
         )
     
-    token = oauth.create_access_token({"user_id": str(user.id)})
+    token = oauth.create_access_token({"sub": str(user.id)})
+    print(token)
     return {"access_token": token, "token_type": "bearer"}
 
 
 
 @router.get("/me", response_model=schemas.UserRead)
-def get_current_user_info(current_user:models.User= Depends(oauth.get_current_user)):
-    """Get current authenticated user's information"""
-    return current_user
+def get_current_user(current_user:models.User= Depends(oauth.get_current_user)):
+    return current_user 

@@ -9,8 +9,23 @@ class UserRead(BaseModel):
     email:EmailStr
 class UserLogin(CreateUser):
     pass
+class AuthorInfo(BaseModel):
+    id:int
+    email:EmailStr
+
+class CreateArticle(BaseModel):
+    title:str
+    content:str
+
+
+class ResArticle(BaseModel):
+    id:int
+    title:str
+    content:str
+
+
 class TokenData(BaseModel):
-    id:Optional[int]=None
+    id:Optional[str]=None
 class Token(BaseModel):
     access_token:str
     token_type:str

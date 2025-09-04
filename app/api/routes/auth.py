@@ -31,7 +31,7 @@ def login_alternative(login_data: OAuth2PasswordRequestForm=Depends(), db: Sessi
             headers={"WWW-Authenticate": "Bearer"}
         )
     
-    token = oauth.create_access_token({"sub": str(user.id)})
+    token = oauth.create_access_token({"user_id": str(user.id)})
     print(token)
     return {"access_token": token, "token_type": "bearer"}
 

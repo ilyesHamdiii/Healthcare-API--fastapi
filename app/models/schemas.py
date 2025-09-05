@@ -1,5 +1,6 @@
 from pydantic import BaseModel,EmailStr
 from typing import Optional
+from datetime import datetime
 
 class CreateUser(BaseModel):
     email:EmailStr
@@ -18,6 +19,32 @@ class AuthorInfo(BaseModel):
 class CreateArticle(BaseModel):
     title:str
     content:str
+
+class CreateDoctor(BaseModel):
+    name:str
+    speciality:str
+    bio:str
+class ResDoctor(BaseModel):
+    id:int
+    name:str
+    specialty:str
+    bio:str
+    
+
+class DoctorInfo(BaseModel):
+    id:int
+    name:str
+    class config:
+        from_attributes=True
+class ResAppointment(BaseModel):
+    id:int
+    patient:Optional[AuthorInfo]
+    doctor:Optional[DoctorInfo]
+    apointment_time:datetime
+    class config:
+        from_attributes=True
+
+
 
 
 class ResArticle(BaseModel):

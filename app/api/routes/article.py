@@ -18,6 +18,13 @@ def get_articles(db:Session=Depends(get_db),limit:int=Query(default=10,le=100),s
     paginated_articles=articles[0:limit]
     print("articles",articles)
     return paginated_articles
+@router.get("/My_Articles",status_code=status.HTTP_200_OK,response_model=list[schemas.ResArticle])
+def get_my_articles(current_user:models.User=Depends(oauth.get_current_user),db:Session=Depends(get_db)):   
+    articles=db.query(Article).options(joinedload(Article.author)).filter(Article.author_id==current_user.id).all()
+    print("my articles",articles)
+    if not articles:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail=f"You do not have any articles until now ")
+    return articles
 @router.get("/{id}",status_code=status.HTTP_200_OK,response_model=schemas.ResArticle)
 def get_single(id:int,db:Session=Depends(get_db)):
     article=db.query(Article).options(joinedload(Article.author)).filter(Article.id==id).first()
@@ -25,12 +32,7 @@ def get_single(id:int,db:Session=Depends(get_db)):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail=f"Could not find an  ariticle with the provided id ({id})")
 
     return article
-@router.get("/My_Articles",status_code=status.HTTP_200_OK,response_model=list[schemas.ResArticle])
-def get_my_articles(current_user:models.User=Depends(oauth.get_current_user),db:Session=Depends(get_db)):
-    articles=db.query(Article).options(joinedload(Article.author)).filter(Article.author_id==current_user.id).all()
-    if not articles:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail=f"You do not have any articles until now ")
-    return articles
+
 @router.post("/create", status_code=status.HTTP_201_CREATED, response_model=schemas.ResArticle)
 def create(article: schemas.CreateArticle,db: Session = Depends(get_db),current_user: models.User = Depends(oauth.get_current_user)):
     new_article = models.Article(**article.dict())

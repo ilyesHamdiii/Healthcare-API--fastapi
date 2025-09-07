@@ -3,6 +3,11 @@ from sqlalchemy.orm import relationship
 from app.db.base import Base
 from sqlalchemy.sql.sqltypes import TIMESTAMP
 from sqlalchemy.sql.expression  import text
+from enum import Enum
+class Role(str,Enum):
+    PATIENT="patient"
+    DOCTOR="doctor"
+    ADMIN="admin"
 
 class User(Base):
     __tablename__ = "users"
@@ -12,6 +17,7 @@ class User(Base):
     created_at=Column(TIMESTAMP(timezone=True),nullable=False,server_default=text("now()"))
     articles = relationship("Article", back_populates="author")
     appointments=relationship("Appointment",back_populates="patient")
+    role=Column(String,nullable=False,default="patient")
 class Article(Base):
     __tablename__="articles"
     id=Column(Integer,primary_key=True,nullable=False)

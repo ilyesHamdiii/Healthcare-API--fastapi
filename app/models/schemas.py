@@ -22,34 +22,37 @@ class CreateArticle(BaseModel):
 
 class CreateDoctor(BaseModel):
     name:str
-    speciality:str
+    specialty:str
     bio:str
 class ResDoctor(BaseModel):
     id:int
     name:str
     speciality:str
     bio:str
+class UpdateAppointment(BaseModel):
+    appointment_time:datetime
+    status:str
     
 
 class DoctorInfo(BaseModel):
     id:int
     name:str
-    specialty:str
+    speciality:Optional[str]=None
     bio:str    
     class config:
         from_attributes=True
 class ResAppointment(BaseModel):
     id:int
     patient:Optional[AuthorInfo]
-    doctor:Optional[DoctorInfo]
+    doctor:Optional[DoctorInfo]=None
     appointment_time:datetime
     status:str
     class config:
         from_attributes=True
 class CreateAppointment(BaseModel):
-    doctor_name:str
-    appintment_time:datetime
-    status:str
+    patient_id:int
+    doctor_id:int
+    appointment_time:datetime
     class config:
         from_attributes=True
     

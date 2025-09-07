@@ -1,29 +1,111 @@
 from fastapi import FastAPI,APIRouter,status,Depends,HTTPException
 from app.db.base import get_db
-from sqlalchemy.orm import Session
-from app.models.schemas import CreateAppointment,ResAppointment
-from app.models.models import Appointment,Doctor
+from sqlalchemy.orm import Session,joinedload
+from app.models.schemas import CreateAppointment,ResAppointment,UpdateAppointment
+from app.models.models import Appointment,Doctor,Role
 from app.models import models
 from app.core import oauth
+from sqlalchemy.exc import IntegrityError
+from datetime import datetime,timedelta
+from app.core.roles import require_role
 
 app=FastAPI()
 router=APIRouter(
     prefix="/appointment",
     tags=["appointments"]
-
 )
-@router.post("/book",status_code=status.HTTP_201_CREATED,response_model=ResAppointment)
-def book_appointment(appointment:CreateAppointment,db:Session=Depends(get_db),current_user:models.User=Depends(oauth.get_current_user)):
-    new_appointment=Appointment(**appointment.dict())
-    appointments=db.query(Appointment).all()
+@router.post("/book",status_code=status.HTTP_201_CREATED,response_model=ResAppointment,    summary="Book an appointment",
+    description="""
+    This endpoint allows a **patient** to book an appointment with a doctor.  
+    - Requires authentication.  
+    - Appointment length is fixed at 30 minutes.  
+    - Prevents double-booking the same doctor in overlapping times.
+    """,
+)
+def book_appointment(
+    appointment: CreateAppointment,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(oauth.get_current_user),
+):
+    # 1. Authorization: only allow booking for yourself
+    if appointment.patient_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You can only book appointments for yourself."
+        )
+
+    start_time = appointment.appointment_time
+    end_time = start_time + timedelta(minutes=30)
+
+    # 2. Check doctor availability with time overlap
+    conflict = db.query(models.Appointment).filter(
+        models.Appointment.doctor_id == appointment.doctor_id,
+        models.Appointment.appointment_time < end_time,   # existing starts before new ends
+        (models.Appointment.appointment_time + timedelta(minutes=30)) > start_time  # existing ends after new starts
+    ).first()
+
+    if conflict:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Doctor already has an appointment around {appointment.appointment_time}"
+        )
+
+    # 3. Create appointment
+    new_appointment = models.Appointment(
+        patient_id=current_user.id,   # enforce patient
+        doctor_id=appointment.doctor_id,
+        appointment_time=appointment.appointment_time,
+        status="booked"
+    )
+
     try:
-        new_appointment.patient_id=current_user.id
-        doctor=db.query(Doctor).filter(new_appointment.doctor_name==Doctor.name).first()
-        new_appointment.doctor_id=doctor.id
         db.add(new_appointment)
         db.commit()
         db.refresh(new_appointment)
         return new_appointment
-    except:
-        raise HTTPException(status_code=status.HTTP_306_RESERVED,detail=f"You cannot engage an appointment in {new_appointment.appointment_time}")
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid appointment data or duplicate booking."
+        )
+@router.get("/my_appointments",response_model=list[ResAppointment],status_code=status.HTTP_200_OK)
+def get_appointment(current_user:models.User=Depends(oauth.get_current_user),db:Session=Depends(get_db),dependecies=[Depends(require_role(Role.ADMIN,Role.DOCTOR))]):
+    appointment = (
+    db.query(Appointment)
+    .options(
+        joinedload(Appointment.patient),   # load patient object
+        joinedload(Appointment.doctor)     # load doctor object
+    )
+    .filter(Appointment.patient_id == current_user.id )
+)  
+    if not appointment:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail=f"Invalid appointment data")
 
+    return appointment
+@router.put("/update",response_model=ResAppointment,status_code=status.HTTP_200_OK)
+def update(appointment:UpdateAppointment,id:int,current_user:models.User=Depends(oauth.get_current_user),db:Session=Depends(get_db)):
+    update_appointment=db.query(Appointment).options(
+        joinedload(Appointment.patient),joinedload(Appointment.doctor)
+    ).filter(Appointment.id==id).first()
+    if not update_appointment:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail="invalid appointment Data")
+    if current_user.id !=update_appointment.patient_id:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,detail="You can only update your appointment")
+    update_appointment.appointment_time=appointment.appointment_time
+    if appointment.status not in ["booked","canceled","completed"]:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,detail=f"status need to be valid (completed,canceled,booked)")
+    update_appointment.status=appointment.status
+    db.commit()
+    db.refresh(update_appointment)
+    return update_appointment
+@router.delete("/cancel",status_code=status.HTTP_204_NO_CONTENT)
+def delete(id:int,current_user:models.User=Depends(oauth.get_current_user),db:Session=Depends(get_db)):
+    appointment=db.query(Appointment).filter(Appointment.id==id).first()
+    if not appointment:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail=f"Invalid appointment Data")
+    if appointment.patient_id!=current_user.id:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,detail=f"U can only delete your own appointments")
+    db.delete(appointment)
+    db.commit()
+    return {"message": f"Appointment  with id ({id}) is canceled"}

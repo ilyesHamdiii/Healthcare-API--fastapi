@@ -24,6 +24,8 @@ def create_access_token(data: dict):
     return encoded_jwt
 
 def verify_access_token(token: str, credentials_exception):
+    if not token or token.strip() == "":
+        raise credentials_exception
     try:
         payload = jwt.decode(
             token,

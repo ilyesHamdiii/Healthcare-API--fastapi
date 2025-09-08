@@ -2,7 +2,7 @@ from fastapi import FastAPI,APIRouter,status,Depends,HTTPException
 from app.db.base import get_db
 from sqlalchemy.orm import Session,joinedload
 from app.models.schemas import CreateAppointment,ResAppointment,UpdateAppointment
-from app.models.models import Appointment,Doctor,Role
+from app.models.models import Appointment,Role
 from app.models import models
 from app.core import oauth
 from sqlalchemy.exc import IntegrityError
@@ -14,18 +14,11 @@ router=APIRouter(
     prefix="/appointment",
     tags=["appointments"]
 )
-@router.post("/book",status_code=status.HTTP_201_CREATED,response_model=ResAppointment,    summary="Book an appointment",
-    description="""
-    This endpoint allows a **patient** to book an appointment with a doctor.  
-    - Requires authentication.  
-    - Appointment length is fixed at 30 minutes.  
-    - Prevents double-booking the same doctor in overlapping times.
-    """,
-)
+@router.post("/book", status_code=status.HTTP_201_CREATED, response_model=ResAppointment)
 def book_appointment(
     appointment: CreateAppointment,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(oauth.get_current_user),
+    current_user = Depends(require_role(Role.PATIENT, Role.ADMIN)),
 ):
     # 1. Authorization: only allow booking for yourself
     if appointment.patient_id != current_user.id:
@@ -34,14 +27,19 @@ def book_appointment(
             detail="You can only book appointments for yourself."
         )
 
+    # 2. Check doctor exists and is a doctor
+    doctor = db.query(models.User).filter(models.User.id == appointment.doctor_id, models.User.role == "doctor").first()
+    if not doctor:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Doctor not found.")
+
     start_time = appointment.appointment_time
     end_time = start_time + timedelta(minutes=30)
 
-    # 2. Check doctor availability with time overlap
+    # 3. Check doctor availability with time overlap
     conflict = db.query(models.Appointment).filter(
         models.Appointment.doctor_id == appointment.doctor_id,
-        models.Appointment.appointment_time < end_time,   # existing starts before new ends
-        (models.Appointment.appointment_time + timedelta(minutes=30)) > start_time  # existing ends after new starts
+        models.Appointment.appointment_time < end_time,
+        (models.Appointment.appointment_time + timedelta(minutes=30)) > start_time
     ).first()
 
     if conflict:
@@ -50,9 +48,9 @@ def book_appointment(
             detail=f"Doctor already has an appointment around {appointment.appointment_time}"
         )
 
-    # 3. Create appointment
+    # 4. Create appointment
     new_appointment = models.Appointment(
-        patient_id=current_user.id,   # enforce patient
+        patient_id=current_user.id,
         doctor_id=appointment.doctor_id,
         appointment_time=appointment.appointment_time,
         status="booked"
@@ -62,6 +60,15 @@ def book_appointment(
         db.add(new_appointment)
         db.commit()
         db.refresh(new_appointment)
+        doctor_notification=models.Notification(
+            user_id=appointment.doctor_id,
+            message=f"New appointment booked by {current_user.email}"
+        )
+        db.add(doctor_notification)
+        db.commit()
+        db.refresh(doctor_notification)
+
+
         return new_appointment
     except IntegrityError:
         db.rollback()
@@ -69,22 +76,25 @@ def book_appointment(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid appointment data or duplicate booking."
         )
-@router.get("/my_appointments",response_model=list[ResAppointment],status_code=status.HTTP_200_OK)
-def get_appointment(current_user:models.User=Depends(oauth.get_current_user),db:Session=Depends(get_db),dependecies=[Depends(require_role(Role.ADMIN,Role.DOCTOR))]):
-    appointment = (
-    db.query(Appointment)
-    .options(
-        joinedload(Appointment.patient),   # load patient object
-        joinedload(Appointment.doctor)     # load doctor object
+@router.get("/my_appointments", response_model=list[ResAppointment], status_code=status.HTTP_200_OK)
+def get_appointment(
+    current_user = Depends(require_role(Role.PATIENT, Role.DOCTOR, Role.ADMIN)),
+    db: Session = Depends(get_db)
+):
+    appointments = (
+        db.query(models.Appointment)
+        .options(
+            joinedload(models.Appointment.patient),
+            joinedload(models.Appointment.doctor)
+        )
+        .filter(models.Appointment.patient_id == current_user.id)
+        .all()
     )
-    .filter(Appointment.patient_id == current_user.id )
-)  
-    if not appointment:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail=f"Invalid appointment data")
-
-    return appointment
+    if not appointments:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No appointments found")
+    return appointments
 @router.put("/update",response_model=ResAppointment,status_code=status.HTTP_200_OK)
-def update(appointment:UpdateAppointment,id:int,current_user:models.User=Depends(oauth.get_current_user),db:Session=Depends(get_db)):
+def update(appointment:UpdateAppointment,id:int,current_user: models.User = Depends(require_role(Role.ADMIN, Role.DOCTOR)),db:Session=Depends(get_db)):
     update_appointment=db.query(Appointment).options(
         joinedload(Appointment.patient),joinedload(Appointment.doctor)
     ).filter(Appointment.id==id).first()
@@ -100,7 +110,7 @@ def update(appointment:UpdateAppointment,id:int,current_user:models.User=Depends
     db.refresh(update_appointment)
     return update_appointment
 @router.delete("/cancel",status_code=status.HTTP_204_NO_CONTENT)
-def delete(id:int,current_user:models.User=Depends(oauth.get_current_user),db:Session=Depends(get_db)):
+def delete(id:int,current_user: models.User = Depends(require_role(Role.ADMIN, Role.DOCTOR)),db:Session=Depends(get_db)):
     appointment=db.query(Appointment).filter(Appointment.id==id).first()
     if not appointment:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail=f"Invalid appointment Data")

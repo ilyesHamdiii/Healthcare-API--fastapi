@@ -6,6 +6,8 @@ from app.models.schemas import ResArticle
 from app.models import models,schemas
 from app.core import oauth
 from app.models.models import  Article
+from app.models.models import Role
+from app.core.roles import require_role
 
 app=FastAPI()
 router=APIRouter(
@@ -13,13 +15,13 @@ router=APIRouter(
     tags=["articles"]
 )
 @router.get("/",status_code=status.HTTP_200_OK,response_model=list[schemas.ResArticle])
-def get_articles(db:Session=Depends(get_db),limit:int=Query(default=10,le=100),search:str=""):
+def get_articles(db:Session=Depends(get_db),limit:int=Query(default=10,le=100),search:str="",current_user: models.User = Depends(require_role(Role.ADMIN, Role.DOCTOR,Role.PATIENT)),):
     articles = db.query(Article).options(joinedload(Article.author)).filter(or_(Article.content.startswith(search),Article.title.startswith(search))).all()
     paginated_articles=articles[0:limit]
     print("articles",articles)
     return paginated_articles
 @router.get("/My_Articles",status_code=status.HTTP_200_OK,response_model=list[schemas.ResArticle])
-def get_my_articles(current_user:models.User=Depends(oauth.get_current_user),db:Session=Depends(get_db)):   
+def get_my_articles(current_user:models.User=Depends(require_role(Role.ADMIN,Role.DOCTOR)),db:Session=Depends(get_db)):   
     articles=db.query(Article).options(joinedload(Article.author)).filter(Article.author_id==current_user.id).all()
     print("my articles",articles)
     if not articles:
@@ -34,7 +36,7 @@ def get_single(id:int,db:Session=Depends(get_db)):
     return article
 
 @router.post("/create", status_code=status.HTTP_201_CREATED, response_model=schemas.ResArticle)
-def create(article: schemas.CreateArticle,db: Session = Depends(get_db),current_user: models.User = Depends(oauth.get_current_user)):
+def create(article: schemas.CreateArticle,db: Session = Depends(get_db),current_user: models.User = Depends(require_role(Role.ADMIN, Role.DOCTOR))):
     new_article = models.Article(**article.dict())
     new_article.author_id = current_user.id
     db.add(new_article)

@@ -1,8 +1,12 @@
-from fastapi import FastAPI,APIRouter,status,HTTPException,Depends
+""" from fastapi import FastAPI,APIRouter,status,HTTPException,Depends
 from app.db.base import get_db
 from sqlalchemy.orm import Session
 from app.models.schemas import ResDoctor,CreateDoctor
 from app.models.models import Doctor
+from app.models.models import Role
+from app.core.roles import require_role
+
+app=FastAPI()
 
 app=FastAPI()
 router=APIRouter(
@@ -20,4 +24,4 @@ def create(doctor:CreateDoctor,db:Session=Depends(get_db)):
 @router.get("/list",status_code=status.HTTP_200_OK,response_model=list[ResDoctor])
 def get(db:Session=Depends(get_db)):
     doctors=db.query(Doctor).all()
-    return doctors
+    return doctors """

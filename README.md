@@ -32,7 +32,7 @@ This project demonstrates how to build a modern healthcare backend using FastAPI
 
 1. **Clone the repository:**
    ```sh
-   git clone <repo-url>
+   git clone ilyesHamdiii/Healthcare-API--fastapi
    cd Health care api
    ```
 

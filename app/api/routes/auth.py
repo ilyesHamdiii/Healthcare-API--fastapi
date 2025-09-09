@@ -14,8 +14,20 @@ router=APIRouter(
     tags=["authorisation"]
 )
 
-@router.post("/login", status_code=status.HTTP_200_OK, response_model=schemas.Token)
-def login_alternative(login_data: OAuth2PasswordRequestForm=Depends(), db: Session = Depends(get_db)):
+@router.post(
+    "/login",
+    status_code=status.HTTP_200_OK,
+    response_model=schemas.Token,
+    summary="User Login",
+    description="Authenticate a user using email and password. Returns a JWT access token if credentials are valid."
+)
+def login_alternative(
+    login_data: OAuth2PasswordRequestForm = Depends(),
+    db: Session = Depends(get_db)
+):
+    """
+    Authenticate user and return JWT token.
+    """
     user = db.query(models.User).filter(models.User.email == login_data.username).first()
     if not user:
         raise HTTPException(
@@ -36,7 +48,16 @@ def login_alternative(login_data: OAuth2PasswordRequestForm=Depends(), db: Sessi
     return {"access_token": token, "token_type": "bearer"}
 
 
-
-@router.get("/me", response_model=schemas.UserRead)
-def get_current_user(current_user:models.User= Depends(oauth.get_current_user)):
-    return current_user 
+@router.get(
+    "/me",
+    response_model=schemas.UserRead,
+    summary="Get Current User",
+    description="Retrieve details of the currently authenticated user using the provided JWT token."
+)
+def get_current_user(
+    current_user: models.User = Depends(get_current_user)
+):
+    """
+    Return the authenticated user's information.
+    """
+    return current_user

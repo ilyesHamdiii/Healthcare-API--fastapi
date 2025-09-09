@@ -18,8 +18,14 @@ router=APIRouter(
 )
 models.Base.metadata.create_all(bind=engine)
 
-@router.post("/", status_code=status.HTTP_201_CREATED, response_model=schemas.UserRead)
-def CreateUser(user: schemas.CreateUser, db: Session = Depends(get_db),current_user:models.User=Depends(require_role(Role.ADMIN))):
+@router.post(
+    "/",
+    status_code=status.HTTP_201_CREATED,
+    response_model=schemas.UserRead,
+    summary="Create a New User",
+    description="Create a new user account. Only admins can create users. You can specify role, speciality, and bio for doctors."
+)
+def CreateUser(user: schemas.CreateUser, db: Session = Depends(get_db), current_user: models.User = Depends(require_role(Role.ADMIN))):
     hashed_password = utility.hash(user.password)
     user.password = hashed_password
     new_user = models.User(**user.dict())
@@ -27,8 +33,18 @@ def CreateUser(user: schemas.CreateUser, db: Session = Depends(get_db),current_u
     db.commit()
     db.refresh(new_user)
     return new_user
-
-@router.get("/doctors", status_code=status.HTTP_200_OK, response_model=list[schemas.UserRead],)
-def get_doctors(db: Session = Depends(get_db),current_user:models.User=Depends(require_role(Role.ADMIN,Role.DOCTOR,Role.PATIENT)),limit:int=Query(default=10,le=100),speciality:str=""):
+@router.get(
+    "/doctors",
+    status_code=status.HTTP_200_OK,
+    response_model=list[schemas.UserRead],
+    summary="List Doctors",
+    description="Retrieve a list of all doctors. You can filter by speciality and limit the number of results."
+)
+def get_doctors(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(require_role(Role.ADMIN, Role.DOCTOR, Role.PATIENT)),
+    limit: int = Query(default=10, le=100),
+    speciality: str = ""
+):
     doctors = db.query(models.User).filter(models.User.role == "doctor").filter(models.User.speciality.startswith(speciality)).all()
     return doctors

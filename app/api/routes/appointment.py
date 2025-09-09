@@ -14,7 +14,13 @@ router=APIRouter(
     prefix="/appointment",
     tags=["appointments"]
 )
-@router.post("/book", status_code=status.HTTP_201_CREATED, response_model=ResAppointment)
+@router.post(
+    "/book",
+    status_code=status.HTTP_201_CREATED,
+    response_model=ResAppointment,
+    summary="Book Appointment",
+    description="Book a new appointment with a doctor. Only patients and admins can book appointments."
+)
 def book_appointment(
     appointment: CreateAppointment,
     db: Session = Depends(get_db),
@@ -76,7 +82,13 @@ def book_appointment(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid appointment data or duplicate booking."
         )
-@router.get("/my_appointments", response_model=list[ResAppointment], status_code=status.HTTP_200_OK)
+@router.get(
+    "/my_appointments",
+    response_model=list[ResAppointment],
+    status_code=status.HTTP_200_OK,
+    summary="Get My Appointments",
+    description="Retrieve all appointments for the currently authenticated user."
+)
 def get_appointment(
     current_user = Depends(require_role(Role.PATIENT, Role.DOCTOR, Role.ADMIN)),
     db: Session = Depends(get_db)
@@ -93,8 +105,19 @@ def get_appointment(
     if not appointments:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No appointments found")
     return appointments
-@router.put("/update",response_model=ResAppointment,status_code=status.HTTP_200_OK)
-def update(appointment:UpdateAppointment,id:int,current_user: models.User = Depends(require_role(Role.ADMIN, Role.DOCTOR)),db:Session=Depends(get_db)):
+@router.put(
+    "/update",
+    response_model=ResAppointment,
+    status_code=status.HTTP_200_OK,
+    summary="Update Appointment",
+    description="Update an existing appointment. Only the patient who booked the appointment can update it."
+)
+def update(
+    appointment: UpdateAppointment,
+    id: int,
+    current_user: models.User = Depends(require_role(Role.ADMIN, Role.DOCTOR)),
+    db: Session = Depends(get_db)
+):
     update_appointment=db.query(Appointment).options(
         joinedload(Appointment.patient),joinedload(Appointment.doctor)
     ).filter(Appointment.id==id).first()
@@ -109,8 +132,17 @@ def update(appointment:UpdateAppointment,id:int,current_user: models.User = Depe
     db.commit()
     db.refresh(update_appointment)
     return update_appointment
-@router.delete("/cancel",status_code=status.HTTP_204_NO_CONTENT)
-def delete(id:int,current_user: models.User = Depends(require_role(Role.ADMIN, Role.DOCTOR)),db:Session=Depends(get_db)):
+@router.delete(
+    "/cancel",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Cancel Appointment",
+    description="Cancel an appointment by its ID. Only the patient who booked the appointment can cancel it."
+)
+def delete(
+    id: int,
+    current_user: models.User = Depends(require_role(Role.ADMIN, Role.DOCTOR)),
+    db: Session = Depends(get_db)
+):
     appointment=db.query(Appointment).filter(Appointment.id==id).first()
     if not appointment:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail=f"Invalid appointment Data")

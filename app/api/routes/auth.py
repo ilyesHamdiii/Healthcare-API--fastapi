@@ -7,8 +7,6 @@ from app.models import models
 from app.core import utility,oauth
 from fastapi.security.oauth2 import OAuth2PasswordRequestForm
 from app.core.oauth import get_current_user
-from jose import JWTError,jwt
-from app.core.oauth import oauth2_scheme
 app=FastAPI()
 router=APIRouter(
     tags=["authorisation"]

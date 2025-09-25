@@ -92,7 +92,7 @@ Healthcare systems need secure, scalable, and maintainable APIs for managing use
 ## Live Demo
 
 Try the deployed app here:  
- [https://django-ecommerce-axnp.onrender.com/](https://healthcare-api-fastapi.onrender.com/docs)
+ [https://healthcare-api-fastapi.onrender.com/docs](https://healthcare-api-fastapi.onrender.com/docs)
 
 ## Project Structure
 

@@ -25,7 +25,7 @@ models.Base.metadata.create_all(bind=engine)
     summary="Create a New User",
     description="Create a new user account. Only admins can create users. You can specify role, speciality, and bio for doctors."
 )
-def CreateUser(user: schemas.CreateUser, db: Session = Depends(get_db), current_user: models.User = Depends(require_role(Role.ADMIN))):
+def CreateUser(user: schemas.CreateUser, db: Session = Depends(get_db)):
     hashed_password = utility.hash(user.password)
     user.password = hashed_password
     new_user = models.User(**user.dict())

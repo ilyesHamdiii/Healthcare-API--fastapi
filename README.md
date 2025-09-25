@@ -38,93 +38,10 @@ This project demonstrates how to build a modern healthcare backend using FastAPI
 
 ## How to Experience the API
 
+- ⚠️ **Note:** The `create user` role is left open **only for demonstration purposes**. In a production environment, this endpoint should be restricted to admins.
+
 1. **Clone the repository:**
    ```sh
    git clone ilyesHamdiii/Healthcare-API--fastapi
    cd Health care api
    ```
-
-2. **Create and activate a virtual environment (if not using Docker):**
-   ```sh
-   python -m venv myvenv
-   myvenv\Scripts\activate
-   ```
-
-3. **Install dependencies (if not using Docker):**
-   ```sh
-   pip install -r requirements.txt
-   ```
-
-4. **Set up environment variables:**
-   - Copy `.env.example` to `.env` and fill in your database credentials and `SECRET_KEY`.
-
-5. **Run with Docker and Nginx (recommended):**
-   - Make sure Docker is installed.
-   - Build and start the containers:
-     ```sh
-     docker-compose up --build
-     ```
-   - Nginx will act as a reverse proxy to the FastAPI app.
-
-6. **Initialize the database:**
-   - (If using Alembic or similar, run migrations. Otherwise, tables are auto-created on startup.)
-
-7. **Start the API server (manual, if not using Docker):**
-   ```sh
-   uvicorn app.main:app --reload
-   ```
-
-8. **Explore the interactive docs:**
-   - Visit [http://localhost:8000/docs](http://localhost:8000/docs) for Swagger UI and try out endpoints directly.
-
----
-
-## Project Structure
-
-```
-Health care api/
-│
-├── app/
-│   ├── api/
-│   │   └── routes/
-│   │       ├── auth.py          # Authentication endpoints (login, current user)
-│   │       ├── user.py          # User management (create, list doctors)
-│   │       ├── appointment.py   # Appointment booking and management
-│   │       ├── article.py       # Health articles CRUD
-│   │       ├── notifications.py # Notification endpoints
-│   │       └── doctors.py       # (Legacy, now handled via user.py)
-│   ├── core/
-│   │   ├── oauth.py             # JWT token creation and validation
-│   │   ├── roles.py             # Role-based access control dependencies
-│   │   └── utility.py           # Password hashing and verification
-│   ├── db/
-│   │   ├── base.py              # Database session and engine setup
-│   ├── models/
-│   │   ├── models.py            # SQLAlchemy ORM models (User, Appointment, Article, Notification)
-│   │   └── schemas.py           # Pydantic schemas for request/response validation
-│   └── main.py                  # FastAPI app instance and router registration
-│
-├── requirements.txt             # Python dependencies
-├── .env.example                 # Example environment variables
-├── README.md                    # Project documentation
-```
-
-### Folder Summaries
-
-- **app/api/routes/**: All API endpoints grouped by resource (auth, user, appointment, etc.).
-- **app/core/**: Core logic for authentication, authorization, and utilities.
-- **app/db/**: Database connection and session management.
-- **app/models/**: Database models and Pydantic schemas for validation.
-- **app/main.py**: FastAPI app setup and router inclusion.
-
----
-
-## Contributing
-
-Feel free to open issues or submit pull requests for improvements or new features!
-
----
-
-## License
-
-MIT License (or specify your license
